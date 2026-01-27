@@ -3,14 +3,16 @@
 #include <stdio.h>
 #define PORT 8080
 
-int main(){
+int main()
+{
 
     WSADATA wsaData;
 
-    int WSA_result = WSAStartup(MAKEWORD(2,2),&wsaData);
+    int WSA_result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-    if (WSA_result != 0){
-        printf("WSAStartup failed: %d\n",  WSAGetLastError());
+    if (WSA_result != 0)
+    {
+        printf("WSAStartup failed: %d\n", WSAGetLastError());
         return 1;
     }
 
@@ -18,7 +20,8 @@ int main(){
 
     SOCKET server_socket = socket(AF_INET, SOCK_STREAM, 0);
 
-    if(server_socket == INVALID_SOCKET){
+    if (server_socket == INVALID_SOCKET)
+    {
         printf("Socket creation failed: %d\n", WSAGetLastError());
         WSACleanup();
         return 1;
@@ -34,7 +37,8 @@ int main(){
 
     int socket_bind_result = bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
 
-    if (socket_bind_result == SOCKET_ERROR){
+    if (socket_bind_result == SOCKET_ERROR)
+    {
         printf("Socket Binding Failed: %d \n", WSAGetLastError());
         closesocket(server_socket);
         WSACleanup();
@@ -45,7 +49,8 @@ int main(){
 
     int socket_listen_result = listen(server_socket, 5);
 
-    if (socket_listen_result == SOCKET_ERROR){
+    if (socket_listen_result == SOCKET_ERROR)
+    {
         printf("Socket listing failed %d \n", WSAGetLastError());
         closesocket(server_socket);
         WSACleanup();
@@ -55,12 +60,48 @@ int main(){
     printf("Server listening on port %d...\n", PORT);
     printf("Open your browser and go to: http://localhost:%d\n", PORT);
 
-    printf("\nPress Enter to shut down the server...\n");
-    getchar();
+    struct sockaddr_in client_addr;
+    int client_addr_size = sizeof(client_addr);
+
+    printf("\nWaiting for a connection...\n");
+
+    SOCKET client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_size);
+
+    if (client_socket == INVALID_SOCKET)
+    {
+        printf("Accepting connection failed: %d \n", WSAGetLastError());
+        closesocket(server_socket);
+        WSACleanup();
+        return 1;
+    }
+
+    printf("Client connected!\n");
+
+    printf("Client IP: %s\n", inet_ntoa(client_addr.sin_addr));
+    printf("Server IP: %s\n", inet_ntoa(server_addr.sin_addr));
+
+    char buffer[4096];
+    int bytes_received = recv(client_socket, buffer, sizeof(buffer) - 1, 0);
+
+    if (bytes_received == SOCKET_ERROR)
+    {
+        printf("Recv failed: %d\n", WSAGetLastError());
+        closesocket(client_socket);
+        closesocket(server_socket);
+        WSACleanup();
+        return 1;
+    }
+
+    buffer[bytes_received] = '\0';
+
+    printf("\n--- Received HTTP Request ---\n");
+    printf("%s", buffer);
+    printf("--- End of Request ---\n");
+
+    closesocket(client_socket);
 
     closesocket(server_socket);
     WSACleanup();
-
     printf("Server shut down");
 
     return 0;
